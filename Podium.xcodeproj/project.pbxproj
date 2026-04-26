@@ -198,7 +198,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 932B3BBB2CF7FF7900AF503D /* Build configuration list for PBXProject "Podium Timer" */;
+			buildConfigurationList = 932B3BBB2CF7FF7900AF503D /* Build configuration list for PBXProject "Podium" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -539,7 +539,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		932B3BBB2CF7FF7900AF503D /* Build configuration list for PBXProject "Podium Timer" */ = {
+		932B3BBB2CF7FF7900AF503D /* Build configuration list for PBXProject "Podium" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				932B3BE22CF7FF7B00AF503D /* Debug */,
