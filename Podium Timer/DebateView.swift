@@ -1,17 +1,30 @@
 import SwiftUI
 
+private struct OvertimeBackground: View {
+    @ObservedObject var timerCode: TimerCode
+    let overtimeRedEnabled: Bool
+
+    var body: some View {
+        Rectangle()
+            .frame(width: UIScreen.main.bounds.width + 50, height: UIScreen.main.bounds.height + 50)
+            .foregroundStyle(Color(timerCode.overtime ? "OvertimeRed" : "BackgroundColor"))
+            .opacity(timerCode.overtime && overtimeRedEnabled && timerCode.timerRunning ? 1 : 0)
+            .animation(
+                .easeInOut(duration: 0.5),
+                value: timerCode.overtime && timerCode.timerRunning
+            )
+    }
+}
+
 struct DebateView: View {
     @EnvironmentObject var AppState: AppState
     @AppStorage("theme") private var theme: String = "Dark"
-    @AppStorage("overtimeFlashEnabled") private var overtimeFlashEnabled: Bool = true
+    @AppStorage("overtimeRedEnabled") private var overtimeRedEnabled: Bool = true
     @AppStorage("timerStageDimmingEnabled") private var timerStageDimmingEnabled: Bool = true
     @AppStorage("affColorHex") private var affColorHex: String = "#0D6FDE"
     @AppStorage("negColorHex") private var negColorHex: String = "#C42329"
     @AppStorage("prepTimeAFF") private var prepTimeAFF: Int = 240
     @AppStorage("prepTimeNEG") private var prepTimeNEG: Int = 240
-    
-    // Overtime pulse state for background animation
-    @State private var overtimePulse: Bool = true
 
     // State variable for swipe locking when timer is running
     @State private var swipeAllowed: Bool = true
@@ -37,32 +50,19 @@ struct DebateView: View {
     }
     
     private func formatMMSS(_ seconds: Int) -> String {
-        let minutes = seconds / 60
-        let secs = seconds % 60
+        let clamped = max(0, seconds)
+        let minutes = clamped / 60
+        let secs = clamped % 60
         return String(format: "%d:%02d", minutes, secs)
     }
 
     var body: some View {
         ZStack {
-            // Overtime background pulse
-            Rectangle()
-                .frame(width: UIScreen.main.bounds.width + 50, height: UIScreen.main.bounds.height + 50)
-                .foregroundStyle(Color(currentTimer.overtime ? "OvertimeRed" : "BackgroundColor"))
-                .opacity(
-                    currentTimer.overtime && overtimeFlashEnabled
-                    ? (overtimePulse ? 1 : 0)
-                    : 0
-                )
-                .animation(.easeInOut(duration: 0.5), value: overtimePulse)
-                .onAppear {
-                    Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
-                        if currentTimer.overtime && overtimeFlashEnabled {
-                            overtimePulse.toggle()
-                        } else {
-                            overtimePulse = true
-                        }
-                    }
-                }
+            // Overtime background
+            OvertimeBackground(
+                timerCode: currentTimer,
+                overtimeRedEnabled: overtimeRedEnabled
+            )
 
             VStack {
                 Spacer()
@@ -121,6 +121,7 @@ struct DebateView: View {
                     if !currentTimer.timerRunning {
                         currentTimer.reset()
                         swipeAllowed = true
+                        UIApplication.shared.isIdleTimerDisabled = currentTimer.timerRunning
                     }
                 }) {
                     Text("Reset")
@@ -142,6 +143,7 @@ struct DebateView: View {
                         currentTimer.start()
                         swipeAllowed = false
                     }
+                    UIApplication.shared.isIdleTimerDisabled = currentTimer.timerRunning
                 }) {
                     Text(currentTimer.timerRunning ? "Stop" : "Start")
                         .frame(width: 110, height: 110)
@@ -165,7 +167,7 @@ struct DebateView: View {
                 
                 // AFF Prep Time
                 Button(action: {
-                    if AppState.eventPrepTime > 0 {
+                    if AppState.eventPrepTime > 0 && !currentTimer.timerRunning {
                         showAffPrep = true
                     }
                 }, label: {
@@ -175,15 +177,15 @@ struct DebateView: View {
                         .multilineTextAlignment(.center)
                         .foregroundColor(Color(hex: affColorHex))
                         .opacity(AppState.eventPrepTime > 0 ? (currentTimer.timerRunning && timerStageDimmingEnabled ? 0.1 : 0.8) : 0.0)
-                        .allowsHitTesting(AppState.eventPrepTime > 0 && !(currentTimer.timerRunning && timerStageDimmingEnabled))
                         .animation(.default, value: currentTimer.timerRunning)
                 })
+                .allowsHitTesting(AppState.eventPrepTime > 0 && !(currentTimer.timerRunning && timerStageDimmingEnabled))
                 
                 Spacer()
                 
                 // NEG Prep Time
                 Button(action: {
-                    if AppState.eventPrepTime > 0 {
+                    if AppState.eventPrepTime > 0 && !currentTimer.timerRunning {
                         showNegPrep = true
                     }                }, label: {
                     Text("Prep\n\(formatMMSS(AppState.prepTimeNEG))")
@@ -192,25 +194,14 @@ struct DebateView: View {
                         .multilineTextAlignment(.center)
                         .foregroundColor(Color(hex: negColorHex))
                         .opacity(AppState.eventPrepTime > 0 ? (currentTimer.timerRunning && timerStageDimmingEnabled ? 0.1 : 0.8) : 0.0)
-                        .allowsHitTesting(AppState.eventPrepTime > 0 && !(currentTimer.timerRunning && timerStageDimmingEnabled))
                         .animation(.default, value: currentTimer.timerRunning)
                 })
+                .allowsHitTesting(AppState.eventPrepTime > 0 && !(currentTimer.timerRunning && timerStageDimmingEnabled))
             }
             .padding(75)
             .offset(y: 210)
         }
-        
-        // Overtime pulser
-        .onAppear {
-            Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
-                if currentTimer.overtime && overtimeFlashEnabled {
-                    overtimePulse.toggle()
-                } else {
-                    overtimePulse = true
-                }
-            }
-        }
-        .background(Color("BackgroundColor")).ignoresSafeArea()
+        .background(Color("BackgroundColor"))
         
         // End round alert
         .alert(isPresented: $showEndRoundConfirmation) {
@@ -240,6 +231,12 @@ struct DebateView: View {
             PrepTimeView(side: .neg, color: Color(hex: negColorHex), affRemainingSeconds: $AppState.prepTimeAFF, negRemainingSeconds: $AppState.prepTimeNEG, isPresented: $showNegPrep)
                 .presentationDetents([.height(260)])
                 .presentationDragIndicator(.visible)
+        }
+        .onAppear {
+            UIApplication.shared.isIdleTimerDisabled = currentTimer.timerRunning
+        }
+        .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
         }
     }
 }

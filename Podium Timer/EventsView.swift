@@ -165,7 +165,7 @@ struct EventButton: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 20)
-                            .stroke(Color.white.opacity(0.2), lineWidth: 0.8)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1.5)
                     )
                     .overlay(
                         Text(backgroundText)

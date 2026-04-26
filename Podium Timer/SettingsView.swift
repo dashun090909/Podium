@@ -5,9 +5,10 @@ struct SettingsView: View {
     @EnvironmentObject var AppState: AppState
     
     @AppStorage("theme") private var theme: String = "Dark"
-    @AppStorage("overtimeFlashEnabled") private var overtimeFlashEnabled: Bool = true
+    @AppStorage("overtimeRedEnabled") private var overtimeRedEnabled: Bool = true
     @AppStorage("timerStageDimmingEnabled") private var timerStageDimmingEnabled: Bool = true
     @AppStorage("speakerIdentifierEnabled") private var speakerIdentifierEnabled: Bool = false
+    @AppStorage("prepLastUsedEnabled") private var prepLastUsedEnabled: Bool = false
     @AppStorage("affColorHex") private var affColorHex: String = "#0D6FDE"
     @AppStorage("negColorHex") private var negColorHex: String = "#C42329"
     @AppStorage("warningColorHexLight") private var warningColorHexLight: String = "#C42329"
@@ -57,8 +58,9 @@ struct SettingsView: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .semibold))
                         .frame(width: 34, height: 34)
-                        .foregroundStyle(Color(.white))
+                        .foregroundStyle(.primary)
                 }
+                .buttonStyle(.plain)
                 .clipShape(Circle())
                 .glassIfAvailable()
             }
@@ -100,9 +102,9 @@ struct SettingsView: View {
                         Divider()
                         
                         HStack {
-                            Text("Overtime Flash")
+                            Text("Overtime Red")
                             Spacer()
-                            Toggle("", isOn: $overtimeFlashEnabled)
+                            Toggle("", isOn: $overtimeRedEnabled)
                         }
 
                         Divider()
@@ -238,18 +240,23 @@ struct SettingsView: View {
                     }
                     .padding(20)
                     .background(RoundedRectangle(cornerRadius: 12).fill(Color("RegressedColor").opacity(0.5)))
+
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Text("Prep Time \"Last used\"")
+                            Spacer()
+                            Toggle("", isOn: $prepLastUsedEnabled)
+                        }
+                    }
+                    .padding(20)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color("RegressedColor").opacity(0.5)))
                     
                     Text("Made by Dashun")
                         .font(.system(.footnote, design: .monospaced))
                         .foregroundColor(.primary.opacity(0.7))
                         .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.top, 20)
-                    
-                    Text("App icon by Annabelle")
-                        .font(.system(.footnote, design: .monospaced))
-                        .foregroundColor(.primary.opacity(0.7))
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.bottom, 50)
+                        .padding(.top, 15)
+                        .padding(.bottom, 40)
                 }
             }
             .scrollIndicators(.never)
@@ -272,9 +279,10 @@ struct SettingsView: View {
     // Reset all settings to default values
     private func resetToDefaults() {
         theme = "Dark"
-        overtimeFlashEnabled = true
+        overtimeRedEnabled = true
         timerStageDimmingEnabled = true
         speakerIdentifierEnabled = false
+        prepLastUsedEnabled = true
         affColorHex = "#0D6FDE"
         negColorHex = "#C42329"
         warningThreshold = 30

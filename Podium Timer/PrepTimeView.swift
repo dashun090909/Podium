@@ -27,9 +27,11 @@ struct PrepTimeView: View {
     // Persisted full-prep baselines so Reset works across sheet reopen
     @AppStorage("prepBaselineAffSeconds") private var baselineAffSeconds: Int = 0
     @AppStorage("prepBaselineNegSeconds") private var baselineNegSeconds: Int = 0
+    @AppStorage("prepLastUsedEnabled") private var prepLastUsedEnabled: Bool = true
 
     // Tracks how long prep ran continuously the last time it was started
     @State private var lastRunElapsedSeconds: Int = 0
+    @State private var accumulatedElapsedSeconds: Int = 0
 
     // Enables a short numeric-text animation when the timer is reset
     @State private var resetPeriod: Bool = false
@@ -96,24 +98,27 @@ struct PrepTimeView: View {
             Text("Last used: \(formatElapsed(lastRunElapsedSeconds))")
                 .font(.system(size: 15, weight: .medium, design: .monospaced))
                 .foregroundStyle(.secondary)
-                .opacity(running ? 0.45 : 1.0)
+                .opacity(prepLastUsedEnabled ? (running ? 0.45 : 1.0) : 0.0)
 
-            // Analog time and overtime indicator
+            // Analog time
             VStack(spacing: 6) {
                 Text(analog(remainingSeconds.wrappedValue))
                     .font(.system(size: 48, weight: .medium, design: .monospaced))
                     .kerning(2)
+                    .scaleEffect(prepLastUsedEnabled ? 1.0 : 1.2)
+                    .foregroundStyle(
+                        remainingSeconds.wrappedValue < 0
+                            ? Color("DangerRed")
+                            : .primary
+                    )
                     .contentTransition(.numericText())
                     .animation(
                         resetPeriod ? .easeInOut(duration: 0.25) : nil,
                         value: remainingSeconds.wrappedValue
                     )
-
-                Text(remainingSeconds.wrappedValue < 0 ? "OVERTIME" : "")
-                    .font(.system(size: 16, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Color("DangerRed"))
-                    .animation(.easeInOut, value: remainingSeconds.wrappedValue < 0)
             }
+            .offset(y: prepLastUsedEnabled ? 0 : -24)
+            .padding(.bottom)
             .frame(maxWidth: .infinity)
 
             // Start/Stop button
@@ -137,10 +142,11 @@ struct PrepTimeView: View {
             .glassIfAvailable()
             .contentShape(RoundedRectangle(cornerRadius: 14))
             .offset(y: -10)
+            .padding(.bottom)
             
             Spacer(minLength: 10)
         }
-        .padding(.top, 60)
+        .padding(.top, 65)
         .padding(20)
         .onAppear {
             // Establish baselines without capturing an already-elapsed value.
@@ -158,7 +164,11 @@ struct PrepTimeView: View {
                 baselineNegSeconds = negRemainingSeconds
             }
         }
-        .onDisappear { stop() }
+        .onDisappear {
+            stop()
+            lastRunElapsedSeconds = 0
+            accumulatedElapsedSeconds = 0
+        }
         .interactiveDismissDisabled(running) // lock sheet while running
         .offset(y: -10)
     }
@@ -168,10 +178,7 @@ struct PrepTimeView: View {
     private func start() {
         if running { return }
         running = true
-
-        // Reset last-used counter at the start of a new continuous run
-        lastRunElapsedSeconds = 0
-
+        
         // Capture baseline and wall-clock start so we can "catch up" after backgrounding.
         startingRemainingSeconds = remainingSeconds.wrappedValue
         startedAt = Date()
@@ -191,8 +198,10 @@ struct PrepTimeView: View {
         updateRemainingFromClock()
 
         if let startedAt {
-            lastRunElapsedSeconds = Int(Date().timeIntervalSince(startedAt).rounded(.down))
+            lastRunElapsedSeconds = accumulatedElapsedSeconds + Int(Date().timeIntervalSince(startedAt).rounded(.down))
         }
+
+        accumulatedElapsedSeconds = lastRunElapsedSeconds
 
         running = false
         timer?.invalidate()
@@ -210,7 +219,7 @@ struct PrepTimeView: View {
             negRemainingSeconds = baseline
         }
 
-        // Trigger a short-lived animation window for the analog time
+        // Trigger a short lived animation window for the analog time
         resetPeriod = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             resetPeriod = false
@@ -223,8 +232,8 @@ struct PrepTimeView: View {
         // Compute elapsed seconds based on wall-clock time.
         let elapsed = Int(Date().timeIntervalSince(startedAt).rounded(.down))
 
-        // Tick up the last-used counter while running
-        lastRunElapsedSeconds = elapsed
+        // Tick up the session total while running
+        lastRunElapsedSeconds = accumulatedElapsedSeconds + elapsed
 
         // Allow negative to count overtime.
         remainingSeconds.wrappedValue = startingRemainingSeconds - elapsed

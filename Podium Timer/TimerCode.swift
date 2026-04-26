@@ -87,7 +87,7 @@ class TimerCode: ObservableObject {
             let elapsed = Date().timeIntervalSince(startedAt) * self.timerSpeed
             let newRemaining = self.startingRemainingTime - elapsed
 
-            withAnimation(.linear(duration: 0.05)) {
+            withAnimation(.linear(duration: 0.01)) {
                 self.remainingTime = newRemaining
                 self.overtime = newRemaining < 0.5
             }

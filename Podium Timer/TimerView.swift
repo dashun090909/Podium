@@ -8,7 +8,7 @@ struct TimerView: View {
     @AppStorage("theme") private var theme: String = "Dark"
     @AppStorage("affColorHex") private var affColorHex: String = "#0D6FDE"
     @AppStorage("negColorHex") private var negColorHex: String = "#C42329"
-    @AppStorage("speakerIdentifierEnabled") private var speakerIdentifierEnabled: Bool = true
+    @AppStorage("speakerIdentifierEnabled") private var speakerIdentifierEnabled: Bool = false
     @AppStorage("timerStageDimmingEnabled") private var timerStageDimmingEnabled: Bool = true
 
     let speechTitle: String   // Parameter for speech title text
@@ -51,7 +51,7 @@ struct TimerView: View {
                             .frame(width: min(CGFloat(speechTitle.count) * 60, 300), height: 70)
                         }
                     }
-                    .frame(width: min(CGFloat(speechTitle.count) * 60, 300), height: 70)                    .clipShape(RoundedRectangle(cornerRadius: 15))
+                    .frame(width: min(CGFloat(speechTitle.count) * 60, 300), height: 70) .clipShape(RoundedRectangle(cornerRadius: 15))
                     
                     // Title text
                     Text(speechTitle)
@@ -67,13 +67,15 @@ struct TimerView: View {
                         .stroke(Color("RegressedColor"), lineWidth: 12)
                         .rotationEffect(Angle(degrees: -90))
                     
-                    // Proggress bar
+                    // Progress bar
                     Circle()
-                        .trim(from: TimerCode.timerProgress, to: 1)
+                        .trim(from: min(TimerCode.timerProgress, 0.999), to: 1)
                         .stroke(progressColor(), style: StrokeStyle(lineWidth: 12, lineCap: .round))
                         .rotationEffect(Angle(degrees: -90))
                         .shadow(color: progressColor(), radius: 10)
                         .animation((TimerCode.timerRunning || TimerCode.resetPeriod) ? .linear : nil, value: TimerCode.timerProgress)
+                        .opacity(TimerCode.overtime ? 0 : 1)
+                        .animation(.easeOut(duration: 0.2), value: TimerCode.overtime)
                     
                     // Overtime Indiciator
                     Text(TimerCode.overtime ? "OVERTIME" : "")
@@ -94,7 +96,7 @@ struct TimerView: View {
                             value: TimerCode.timerAnalog
                         )
                     
-                    // Speaker Indicator if relevant for this event
+                    // Speaker Identifier if relevant for this event
                     if AppState.speechSpeakers.count != 0 {
                         Text(AppState.speechSpeakers[AppState.currentTabIndex])
                             .font(.system(size: 17.5, weight: .medium, design: .monospaced))
